@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#121212">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="WikiScroll">
+    <meta name="description" content="Doomscrolling für Nerds – Entdecke Wikipedia im TikTok-Stil.">
+    
+    <title>WikiScroll - Doomscrolling für Nerds</title>
+    
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23121212'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family=' Georgia, serif' font-weight='bold' font-size='320' fill='%23bb86fc'%3EW%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%23121212'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Georgia, serif' font-weight='bold' font-size='320' fill='%23bb86fc'%3EW%3C/text%3E%3C/svg%3E">
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+    <!-- VIEW 1: START SCREEN -->
+    <main id="view-start" class="view active">
+        <div class="start-wrapper">
+            <h1 class="app-title">WikiScroll</h1>
+            <p class="app-subtitle">Wähle dein Rabbit Hole für heute.</p>
+
+            <form id="search-form" class="search-box">
+                <input type="search" id="search-input" placeholder="Thema suchen (z.B. Schwarzes Loch)..." autocomplete="off" required>
+                <button type="submit" aria-label="Suchen">🔍</button>
+            </form>
+
+            <div id="category-grid" class="category-grid"></div>
+
+            <button type="button" id="btn-open-bookmarks" class="bookmarks-trigger-btn">
+                <span class="btn-icon">🔖</span> Gespeicherte Artikel
+            </button>
+        </div>
+    </main>
+
+    <!-- VIEW 2: DOOMSCROLL FEED -->
+    <section id="view-feed" class="view">
+        <header class="floating-header">
+            <button type="button" id="btn-feed-back" class="nav-btn">✖ Home</button>
+            <h2 id="feed-header-title" class="header-title">Kategorie</h2>
+            <button type="button" id="btn-feed-refresh" class="nav-btn icon-only" title="Feed neu laden" aria-label="Feed neu laden">🔄</button>
+        </header>
+
+        <div id="feed-scroll-container" class="snap-container">
+            <div id="feed-list"></div>
+            <div id="feed-loader" class="snap-loader">
+                <div class="spinner"></div>
+                <span id="feed-loader-text">Lade mehr Wissen...</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- VIEW 3: BOOKMARKS -->
+    <section id="view-bookmarks" class="view">
+        <header class="solid-header">
+            <button type="button" id="btn-bookmarks-home" class="nav-btn">✖ Home</button>
+            <h2 class="header-title">🔖 Lesezeichen</h2>
+            <div class="header-spacer"></div>
+        </header>
+        <div id="bookmarks-list" class="bookmarks-container"></div>
+    </section>
+
+    <!-- VIEW 4: FULL ARTICLE OVERLAY -->
+    <aside id="view-overlay" class="overlay-view">
+        <header class="solid-header">
+            <div class="overlay-nav-group">
+                <button type="button" id="btn-overlay-close" class="nav-btn" aria-label="Schließen">✖</button>
+                <button type="button" id="btn-overlay-back" class="nav-btn hidden">⬅️ Zurück</button>
+            </div>
+            <h2 id="overlay-header-title" class="header-title">Artikel</h2>
+            <button type="button" id="btn-overlay-save" class="action-btn overlay-save-btn">
+                <span class="btn-icon">🔒</span> <span class="btn-text">Speichern</span>
+            </button>
+        </header>
+
+        <div id="overlay-scroll-area" class="overlay-scroll-area">
+            <div id="overlay-loader" class="overlay-loader hidden">
+                <div class="spinner"></div>
+                <span>Lade vollständigen Artikel...</span>
+            </div>
+            <article id="overlay-article-content" class="wiki-article-body"></article>
+        </div>
+    </aside>
+
+    <script src="./app.js" defer></script>
+</body>
+</html>
