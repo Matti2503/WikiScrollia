@@ -6,7 +6,6 @@
 const API_BASE = 'https://de.wikipedia.org/w/api.php?origin=*&format=json';
 const STORAGE_KEY = 'wikiscroll_bookmarks_v1';
 
-// Alle 22 Kategorien inkl. Suchlogik und individuellen Hintergrund-Farbverläufen
 const CATEGORIES = [
     { id: 'Zufall', label: 'Zufall', icon: '🎲', gradient: 'linear-gradient(135deg, #161624, #2a1b38)', query: null },
     { id: 'Medizin', label: 'Medizin', icon: '🩺', gradient: 'linear-gradient(135deg, #0d1a20, #163642)', query: 'Medizin OR Krankheit OR Anatomie OR Therapie' },
@@ -36,23 +35,21 @@ const SPECIAL_GRADIENTS = {
     search: 'linear-gradient(135deg, #1a1a2e, #16213e)',
     rabbithole: 'linear-gradient(135deg, #3d1b04, #1a0b00)',
     bookmarks: 'linear-gradient(135deg, #1a1a1a, #2e2e2e)',
-    default: '#121212'
+    default: 'linear-gradient(135deg, #121212, #1a1a1a)'
 };
 
-// Zentraler App-State
 const state = {
-    mode: '',               // 'category' | 'search' | 'rabbithole'
-    value: '',              // Kategorie-ID, Suchbegriff oder Artikel-Titel
-    headerTitle: '',        // Angezeigter Titel im Feed-Header
-    searchOffset: 0,        // Paginierung für Suche & Rabbit Hole
-    articleBuffer: [],      // Vorgeladene Artikel
-    seenPageIds: new Set(), // Verhindert Duplikate innerhalb einer Session
+    mode: '',
+    value: '',
+    headerTitle: '',
+    searchOffset: 0,
+    articleBuffer: [],
+    seenPageIds: new Set(),
     isLoading: false,
-    feedHistoryStack: [],   // Speichert Feed-Zustände bei Rabbit-Hole-Sprüngen
-    overlayHistoryStack: [] // Speichert Artikel-Verlauf im Vollbild-Lesemodus
+    feedHistoryStack: [],
+    overlayHistoryStack: []
 };
 
-// DOM-Referenzen
 const dom = {
     views: {
         start: document.getElementById('view-start'),
@@ -66,6 +63,7 @@ const dom = {
     btnOpenBookmarks: document.getElementById('btn-open-bookmarks'),
     
     // Feed
+    feedHeader: document.querySelector('#view-feed .floating-header'),
     feedScrollContainer: document.getElementById('feed-scroll-container'),
     feedList: document.getElementById('feed-list'),
     feedLoader: document.getElementById('feed-loader'),
@@ -151,6 +149,7 @@ function applyBackgroundTheme(mode, value) {
 
 function goHome() {
     closeOverlay();
+    dom.feedHeader.classList.remove('hidden');
     state.feedHistoryStack = [];
     state.articleBuffer = [];
     state.seenPageIds.clear();
@@ -197,13 +196,11 @@ function removeBookmark(pageId) {
 
 function syncSaveButtonsUI(pageId) {
     const saved = isBookmarked(pageId);
-    // Alle passenden Buttons im Feed aktualisieren
     document.querySelectorAll(`.js-save-btn[data-page-id="${pageId}"]`).forEach(btn => {
         btn.classList.toggle('saved', saved);
         btn.innerHTML = `<span class="btn-icon">${saved ? '🔐' : '🔒'}</span> <span class="btn-text">${saved ? 'Gespeichert' : 'Speichern'}</span>`;
     });
 
-    // Overlay-Button aktualisieren, falls derselbe Artikel offen ist
     if (String(dom.btnOverlaySave.dataset.pageId) === String(pageId)) {
         dom.btnOverlaySave.classList.toggle('saved', saved);
         dom.btnOverlaySave.innerHTML = `<span class="btn-icon">${saved ? '🔐' : '🔒'}</span> <span class="btn-text">${saved ? 'Gespeichert' : 'Speichern'}</span>`;
@@ -260,6 +257,7 @@ async function startFeed(mode, value, headerTitle) {
     state.articleBuffer = [];
     state.seenPageIds.clear();
 
+    dom.feedHeader.classList.remove('hidden');
     dom.feedHeaderTitle.textContent = headerTitle;
     dom.feedList.innerHTML = '';
     dom.feedScrollContainer.scrollTop = 0;
@@ -276,7 +274,6 @@ async function startFeed(mode, value, headerTitle) {
 function enterRabbitHole(articleTitle) {
     closeOverlay();
 
-    // Aktuellen Feed-Zustand auf den Stack legen
     state.feedHistoryStack.push({
         mode: state.mode,
         value: state.value,
@@ -292,6 +289,7 @@ function enterRabbitHole(articleTitle) {
 }
 
 function handleFeedBackNavigation() {
+    dom.feedHeader.classList.remove('hidden');
     if (state.feedHistoryStack.length > 0) {
         const prevState = state.feedHistoryStack.pop();
         state.mode = prevState.mode;
@@ -309,7 +307,6 @@ function handleFeedBackNavigation() {
         applyBackgroundTheme(state.mode, state.value);
         updateFeedBackButtonUI();
 
-        // Gespeicherten Status der Buttons im wiederhergestellten DOM abgleichen
         document.querySelectorAll('.js-save-btn').forEach(btn => {
             syncSaveButtonsUI(btn.dataset.pageId);
         });
@@ -331,6 +328,7 @@ function updateFeedBackButtonUI() {
 }
 
 function refreshCurrentFeed() {
+    dom.feedHeader.classList.remove('hidden');
     dom.feedList.innerHTML = '';
     state.articleBuffer = [];
     dom.feedScrollContainer.scrollTop = 0;
@@ -340,7 +338,7 @@ function refreshCurrentFeed() {
 
 async function fetchBatchIntoBuffer() {
     if (state.mode === 'category' && state.value === 'Zufall') {
-        const url = `${API_BASE}&action=query&generator=random&grnnamespace=0&grnlimit=10&prop=extracts|pageimages&piprop=thumbnail&pithumbsize=800&exintro=1`;
+        const url = `${API_BASE}&action=query&generator=random&grnnamespace=0&grnlimit=10&prop=extracts|pageimages&piprop=thumbnail&pithumbsize=1000&exintro=1`;
         const res = await fetch(url);
         const data = await res.json();
         if (data.query && data.query.pages) {
@@ -366,23 +364,20 @@ async function fetchBatchIntoBuffer() {
         state.searchOffset += 10;
     }
 
-    const url = `${API_BASE}&action=query&generator=search&gsrsearch=${encodeURIComponent(searchQuery)}&gsrnamespace=0&gsrlimit=10&gsroffset=${offset}&prop=extracts|pageimages&piprop=thumbnail&pithumbsize=800&exintro=1`;
+    const url = `${API_BASE}&action=query&generator=search&gsrsearch=${encodeURIComponent(searchQuery)}&gsrnamespace=0&gsrlimit=10&gsroffset=${offset}&prop=extracts|pageimages&piprop=thumbnail&pithumbsize=1000&exintro=1`;
     const res = await fetch(url);
     const data = await res.json();
 
     if (data.query && data.query.pages) {
         const pages = Object.values(data.query.pages);
         if (state.mode === 'category') {
-            // Zufällig mischen für Kategorien
             pages.sort(() => Math.random() - 0.5);
         } else {
-            // Bei Suche & Rabbit Hole strikt nach Relevanz-Index (index) sortieren
             pages.sort((a, b) => (a.index || 0) - (b.index || 0));
         }
         state.articleBuffer.push(...pages);
     } else if (state.mode === 'category' && offset > 0) {
-        // Fallback auf Offset 0, falls der Zufalls-Offset zu hoch war
-        const fallbackUrl = `${API_BASE}&action=query&generator=search&gsrsearch=${encodeURIComponent(searchQuery)}&gsrnamespace=0&gsrlimit=10&gsroffset=0&prop=extracts|pageimages&piprop=thumbnail&pithumbsize=800&exintro=1`;
+        const fallbackUrl = `${API_BASE}&action=query&generator=search&gsrsearch=${encodeURIComponent(searchQuery)}&gsrnamespace=0&gsrlimit=10&gsroffset=0&prop=extracts|pageimages&piprop=thumbnail&pithumbsize=1000&exintro=1`;
         const fbRes = await fetch(fallbackUrl);
         const fbData = await fbRes.json();
         if (fbData.query && fbData.query.pages) {
@@ -444,11 +439,22 @@ function renderFeedCard(article) {
     content.className = 'post-content';
 
     if (hasImage) {
+        const ctrlWrap = document.createElement('div');
+        ctrlWrap.className = 'img-controls';
+
         const toggleBtn = document.createElement('button');
         toggleBtn.type = 'button';
-        toggleBtn.className = 'toggle-img-btn js-toggle-img';
+        toggleBtn.className = 'img-ctrl-btn js-toggle-img';
         toggleBtn.innerHTML = '⬇️ Bild ausblenden';
-        content.appendChild(toggleBtn);
+
+        const expandBtn = document.createElement('button');
+        expandBtn.type = 'button';
+        expandBtn.className = 'img-ctrl-btn js-expand-img';
+        expandBtn.innerHTML = '🔍 Bild vergrößern';
+
+        ctrlWrap.appendChild(toggleBtn);
+        ctrlWrap.appendChild(expandBtn);
+        content.appendChild(ctrlWrap);
     }
 
     const titleEl = document.createElement('h3');
@@ -518,7 +524,6 @@ async function openFullArticle(identifier, isPageId = false, isHistoryBack = fal
     dom.overlayLoader.classList.remove('hidden');
     dom.overlayScrollArea.scrollTop = 0;
 
-    // Save-Button während des Ladens neutralisieren
     dom.btnOverlaySave.dataset.pageId = '';
     dom.btnOverlaySave.dataset.title = '';
 
@@ -537,7 +542,6 @@ async function openFullArticle(identifier, isPageId = false, isHistoryBack = fal
             dom.overlayHeaderTitle.textContent = plainTitle;
             dom.overlayArticleContent.innerHTML = sanitizeWikiHtml(data.parse.text);
 
-            // Overlay Save-Button konfigurieren
             dom.btnOverlaySave.dataset.pageId = pageId;
             dom.btnOverlaySave.dataset.title = plainTitle;
             syncSaveButtonsUI(pageId);
@@ -568,11 +572,6 @@ function closeOverlay() {
     state.overlayHistoryStack = [];
 }
 
-/**
- * Bereinigt Wikipedia-HTML:
- * 1. Repariert protokoll-relative Bild-URLs (//upload.wikimedia.org -> https://upload.wikimedia.org)
- * 2. Wandelt interne /wiki/-Pfade in relative Pfade um, damit keine absoluten Root-Pfade entstehen
- */
 function sanitizeWikiHtml(rawHtml) {
     if (!rawHtml) return '';
     return rawHtml
@@ -585,7 +584,6 @@ function sanitizeWikiHtml(rawHtml) {
    EVENT LISTENERS & INTERSECTION OBSERVER
    ========================================= */
 function setupEventListeners() {
-    // 1. Suche auf dem Startscreen
     dom.searchForm.addEventListener('submit', e => {
         e.preventDefault();
         const query = dom.searchInput.value.trim();
@@ -595,14 +593,12 @@ function setupEventListeners() {
         }
     });
 
-    // 2. Kategorie-Auswahl (Event Delegation)
     dom.categoryGrid.addEventListener('click', e => {
         const btn = e.target.closest('.category-btn');
         if (!btn) return;
         startFeed('category', btn.dataset.categoryId, btn.dataset.categoryLabel);
     });
 
-    // 3. Lesezeichen öffnen & schließen
     dom.btnOpenBookmarks.addEventListener('click', openBookmarksView);
     dom.btnBookmarksHome.addEventListener('click', goHome);
 
@@ -613,41 +609,74 @@ function setupEventListeners() {
         }
     });
 
-    // 4. Feed Header Buttons
     dom.btnFeedBack.addEventListener('click', handleFeedBackNavigation);
     dom.btnFeedRefresh.addEventListener('click', refreshCurrentFeed);
 
-    // 5. Feed Card Interaktionen (Speichern, Rabbit Hole, Weiterlesen, Bild ein-/ausblenden)
+    // Beim Weiterwischen zum nächsten Slide evtl. ausgeklappten Vollbildmodus zurücksetzen
+    dom.feedScrollContainer.addEventListener('scroll', () => {
+        if (dom.feedHeader.classList.contains('hidden')) {
+            dom.feedHeader.classList.remove('hidden');
+            document.querySelectorAll('.post-card.image-expanded').forEach(card => {
+                card.classList.remove('image-expanded');
+                const expBtn = card.querySelector('.js-expand-img');
+                if (expBtn) expBtn.innerHTML = '🔍 Bild vergrößern';
+            });
+        }
+    }, { passive: true });
+
+    // Interaktionen auf den Feed-Slides
     dom.feedList.addEventListener('click', e => {
+        // 1. Bild ausblenden / einblenden
         const toggleImgBtn = e.target.closest('.js-toggle-img');
         if (toggleImgBtn) {
             const card = toggleImgBtn.closest('.post-card');
-            card.classList.toggle('image-hidden');
-            toggleImgBtn.innerHTML = card.classList.contains('image-hidden')
-                ? '⬆️ Bild einblenden'
-                : '⬇️ Bild ausblenden';
+            card.classList.remove('image-expanded');
+            dom.feedHeader.classList.remove('hidden');
+
+            const isHidden = card.classList.toggle('image-hidden');
+            toggleImgBtn.innerHTML = isHidden ? '⬆️ Bild einblenden' : '⬇️ Bild ausblenden';
+
+            const expandBtn = card.querySelector('.js-expand-img');
+            if (expandBtn) {
+                expandBtn.classList.toggle('hidden', isHidden);
+                expandBtn.innerHTML = '🔍 Bild vergrößern';
+            }
             return;
         }
 
+        // 2. Bild vergrößern (gesamter Slide) / verkleinern
+        const expandImgBtn = e.target.closest('.js-expand-img');
+        if (expandImgBtn) {
+            const card = expandImgBtn.closest('.post-card');
+            card.classList.remove('image-hidden');
+            const isExpanded = card.classList.toggle('image-expanded');
+
+            expandImgBtn.innerHTML = isExpanded ? '↙️ Bild verkleinern' : '🔍 Bild vergrößern';
+            dom.feedHeader.classList.toggle('hidden', isExpanded);
+            return;
+        }
+
+        // 3. Artikel speichern
         const saveBtn = e.target.closest('.js-save-btn');
         if (saveBtn) {
             saveBookmark(saveBtn.dataset.pageId, saveBtn.dataset.title);
             return;
         }
 
+        // 4. Rabbit Hole starten
         const rabbitBtn = e.target.closest('.js-rabbit-btn');
         if (rabbitBtn) {
             enterRabbitHole(rabbitBtn.dataset.title);
             return;
         }
 
+        // 5. Vollständigen Artikel lesen
         const readBtn = e.target.closest('.js-read-btn');
         if (readBtn) {
             openFullArticle(readBtn.dataset.pageId, true);
         }
     });
 
-    // 6. Overlay Buttons
     dom.btnOverlayClose.addEventListener('click', closeOverlay);
     dom.btnOverlayBack.addEventListener('click', goBackInOverlayHistory);
     dom.btnOverlaySave.addEventListener('click', () => {
@@ -657,12 +686,10 @@ function setupEventListeners() {
         }
     });
 
-    // 7. Globaler Wikipedia-Link-Interceptor (fängt alle Artikel-Links in Vorschau, Volltext & Lesezeichen ab)
     document.addEventListener('click', e => {
         const link = e.target.closest('a');
         if (!link) return;
 
-        // Direkter Treffer über data-Attribut
         if (link.dataset.wikiTitle) {
             e.preventDefault();
             openFullArticle(link.dataset.wikiTitle, false);
@@ -672,13 +699,11 @@ function setupEventListeners() {
         const href = link.getAttribute('href');
         if (!href) return;
 
-        // Interne Anker innerhalb eines Artikels ignorieren
         if (href.startsWith('#')) {
             e.preventDefault();
             return;
         }
 
-        // Wikipedia-Artikel-Links erkennen und im Overlay öffnen
         if (href.startsWith('./wiki/') || href.startsWith('/wiki/') || href.includes('de.wikipedia.org/wiki/')) {
             e.preventDefault();
             let rawTitle = href
@@ -686,7 +711,6 @@ function setupEventListeners() {
                 .replace(/^\.?\/wiki\//, '')
                 .split('#')[0];
 
-            // Spezialseiten oder Datei-Seiten (z.B. Bild-Detailseiten) ignorieren bzw. Titel extrahieren
             const decodedTitle = decodeURIComponent(rawTitle);
             if (!decodedTitle.startsWith('Datei:') && !decodedTitle.startsWith('Spezial:')) {
                 openFullArticle(decodedTitle, false);
@@ -694,7 +718,6 @@ function setupEventListeners() {
             return;
         }
 
-        // Externe Weblinks in neuem Browser-Tab öffnen
         if (href.startsWith('http')) {
             link.setAttribute('target', '_blank');
             link.setAttribute('rel', 'noopener noreferrer');
@@ -715,5 +738,4 @@ function setupIntersectionObserver() {
     observer.observe(dom.feedLoader);
 }
 
-// App starten
 document.addEventListener('DOMContentLoaded', initApp);
